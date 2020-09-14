@@ -14,22 +14,25 @@
 #
 import os
 import sys
+
+import ross
 import sphinx_bootstrap_theme
 
 # sys.path.insert(0, os.path.abspath('.'))
-
+sys.path.insert(0, os.path.abspath("sphinxext"))
 sys.path.append(os.path.abspath("../../ross"))
 
 # -- Project information -----------------------------------------------------
 
 project = "ross"
-copyright = "2019, Team Ross"
-author = "Team Ross"
+copyright = "2019, Team ROSS"
+author = "Team ROSS"
+
 
 # The short X.Y version
-version = ""
+version = ross.__version__[:3]
 # The full version, including alpha/beta/rc tags
-release = "1.0"
+release = ross.__version__
 
 
 # -- General configuration ---------------------------------------------------
@@ -42,29 +45,23 @@ release = "1.0"
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
-    # 'sphinx.ext.autodoc',
-    # 'sphinx.ext.doctest',
-    # 'sphinx.ext.mathjax',
-    # 'sphinx.ext.viewcode',
-    # 'numpydoc',
-    # 'sphinx.ext.autosummary',
-    # 'sphinx.ext.doctest',
-    # 'sphinx.ext.inheritance_diagram',
+    "nbsphinx",
     "sphinx.ext.githubpages",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.doctest",
     "sphinx.ext.todo",
-    "sphinx.ext.imgmath",
+    "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
     "sphinx.ext.coverage",
     "numpydoc",
-    # 'plot_generator',
-    # 'plot_directive',
-    # 'ipython_directive',
-    # 'ipython_console_highlighting',
-    # 'sphinxcontrib.bibtex'
+    "sphinx_copybutton",
+    "sphinxcontrib.bibtex",
 ]
+
+# Generate the API documentation when building
+autosummary_generate = True
+numpydoc_show_class_members = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -91,7 +88,7 @@ language = None
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = None
+pygments_style = "abap"
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -99,6 +96,7 @@ pygments_style = None
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
+nbsphinx_allow_errors = True
 html_theme = "bootstrap"
 htlm_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
 
@@ -109,7 +107,8 @@ htlm_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
 # html_theme_options = {}
 # (Optional) Logo. Should be small enough to fit the navbar (ideally 24x24).
 # Path should be relative to the ``_static`` files directory.
-# html_logo = "my_logo.png"
+html_logo = "ross-logo.svg"
+html_favicon = "ross-logo.ico"
 colors = {
     "charleston-green": "#222831",
     "arsenic": "#393e46",
@@ -122,7 +121,7 @@ colors = {
 # theme further.
 html_theme_options = {
     # Navigation bar title. (Default: ``project`` value)
-    "navbar_title": "Demo",
+    "navbar_title": "ROSS",
     # Tab name for entire site. (Default: "Site")
     "navbar_site_name": "Site",
     # A list of tuples containing pages or urls to link to.
@@ -132,9 +131,13 @@ html_theme_options = {
     #    (name, "http://example.com", True) # arbitrary absolute url
     # Note the "1" or "True" value above as the third argument to indicate
     # an arbitrary url.
-    "navbar_links": [("Examples", "examples"), ("Link", "http://example.com", True)],
+    "navbar_links": [
+        ("Tutorial", "examples/tutorial"),
+        ("Examples", "examples"),
+        ("API", "api"),
+    ],
     # Render the next and previous page links in navbar. (Default: true)
-    "navbar_sidebarrel": True,
+    "navbar_sidebarrel": False,
     # Render the current pages TOC in the navbar. (Default: true)
     "navbar_pagenav": True,
     # Tab name for the current pages TOC. (Default: "Page")
@@ -152,7 +155,7 @@ html_theme_options = {
     "globaltoc_includehidden": "true",
     # HTML navbar class (Default: "navbar") to attach to <div> element.
     # For black navbar, do "navbar navbar-inverse"
-    "navbar_class": "navbar navbar-inverse",
+    "navbar_class": "navbar",
     # Fix navigation bar to top of page?
     # Values: "true" (default) or "false"
     "navbar_fixed_top": "true",
@@ -170,7 +173,7 @@ html_theme_options = {
     # Currently, the supported themes are:
     # - Bootstrap 2: https://bootswatch.com/2
     # - Bootstrap 3: https://bootswatch.com/3
-    "bootswatch_theme": "united",
+    "bootswatch_theme": "lumen",
     # Choose Bootstrap version.
     # Values: "3" (default) or "2" (in quotes)
     "bootstrap_version": "3",
@@ -267,3 +270,5 @@ epub_exclude_files = ["search.html"]
 
 
 # -- Extension configuration -------------------------------------------------
+def setup(app):
+    app.add_stylesheet("style.css")

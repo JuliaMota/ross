@@ -3,78 +3,190 @@
 This module defines the Material class and defines
 some of the most common materials used in rotors.
 """
+from pathlib import Path
+
+import numpy as np
 import toml
+
+from .units import check_units
+
+__all__ = ["Material", "steel"]
+
+ROSS_PATH = Path(__file__).parent
+AVAILABLE_MATERIALS_PATH = ROSS_PATH / "available_materials.toml"
 
 
 class Material:
-    """Material.
+    """Material used on shaft and disks.
 
     Class used to create a material and define its properties.
-    Density and at least at least 2 arguments from E, G_s and
-    Poisson should be provided.
+    Density and at least 2 arguments from E, G_s and Poisson should be
+    provided.
 
-    Run Material.available_materials() for materials already provided.
+    You can run rs.Material.available_materials() to get a list of materials
+    already provided.
 
     Parameters
     ----------
     name : str
         Material name.
-    E : float
-        Young's modulus (N/m**2).
-    G_s : float
-        Shear modulus (N/m**2).
-    rho : float
+    rho : float, pint.Quantity
         Density (N/m**3).
+    E : float, pint.Quantity
+        Young's modulus (N/m**2).
+    G_s : float,
+        Shear modulus (N/m**2).
+    Poisson : float
+        Poisson ratio (dimensionless).
     color : str
-        Can be used on plots.
+        Color that will be used on plots.
 
     Examples
     --------
-    >>> AISI4140 = Material(name='AISI4140', rho=7850, E=203.2e9, G_s=80e9)
+    >>> AISI4140 = Material(name="AISI4140", rho=7850, E=203.2e9, G_s=80e9)
     >>> Steel = Material(name="Steel", rho=7810, E=211e9, G_s=81.2e9)
     >>> AISI4140.Poisson
     0.27
-
     """
 
-    def __init__(self, name, rho, **kwargs):
+    @check_units
+    def __init__(
+        self, name, rho, E=None, G_s=None, Poisson=None, color="#525252", **kwargs
+    ):
+        self.name = str(name)
+        if " " in name:
+            raise ValueError("Spaces are not allowed in Material name")
 
-        assert name is not None, "Name not provided"
-        assert type(name) is str, "Name must be a string"
-        assert " " not in name, "Spaces are not allowed in Material name"
-        assert (
-            sum([1 if i in ["E", "G_s", "Poisson"] else 0 for i in kwargs]) > 1
-        ), "At least 2 arguments from E, G_s and Poisson should be provided"
+        given_args = []
+        for arg in ["E", "G_s", "Poisson"]:
+            if locals()[arg] is not None:
+                given_args.append(arg)
+        if len(given_args) != 2:
+            raise ValueError(
+                "Exactly 2 arguments from E, G_s and Poisson should be provided"
+            )
+        if E is None:
+            E = G_s * (2 * (1 + Poisson))
+        elif G_s is None:
+            G_s = E / (2 * (1 + Poisson))
+        elif Poisson is None:
+            Poisson = (E / (2 * G_s)) - 1
 
-        self.name = name
-        self.rho = rho
-        self.E = kwargs.get("E", None)
-        self.Poisson = kwargs.get("Poisson", None)
-        self.G_s = kwargs.get("G_s", None)
-        self.color = kwargs.get("color", "#525252")
-
-        if self.E is None:
-            self.E = self.G_s * (2 * (1 + self.Poisson))
-        elif self.G_s is None:
-            self.G_s = self.E / (2 * (1 + self.Poisson))
-        elif self.Poisson is None:
-            self.Poisson = (self.E / (2 * self.G_s)) - 1
+        self.rho = float(rho)
+        self.E = float(E)
+        self.G_s = float(G_s)
+        self.Poisson = float(Poisson)
+        self.color = color
 
     def __eq__(self, other):
-        if self.__dict__ == other.__dict__:
+        """Equality method for comparasions.
+
+        Parameters
+        ----------
+        other: object
+            The second object to be compared with.
+
+        Returns
+        -------
+        bool
+            True if the comparison is true; False otherwise.
+
+        Examples
+        --------
+        >>> import ross as rs
+        >>> steel = rs.Material.load_material('Steel')
+        >>> AISI4140 = rs.Material.load_material('AISI4140')
+        >>> steel == AISI4140
+        False
+        """
+        self_list = [v for v in self.__dict__.values() if isinstance(v, (float, int))]
+        other_list = [v for v in other.__dict__.values() if isinstance(v, (float, int))]
+
+        if np.allclose(self_list, other_list):
             return True
         else:
             return False
 
+    def __repr__(self):
+        """Return a string representation of a material.
+
+        Returns
+        -------
+        A string representation of a material object.
+
+        Examples
+        --------
+        >>> import ross as rs
+        >>> steel = rs.Material.load_material('Steel')
+        >>> steel # doctest: +ELLIPSIS
+        Material(name="Steel", rho=7.81000e+03, G_s=8.12000e+10, E=2.11000e+11, color='#525252')
+        """
+        selfE = "{:.5e}".format(self.E)
+        selfrho = "{:.5e}".format(self.rho)
+        selfGs = "{:.5e}".format(self.G_s)
+
+        return (
+            f"Material"
+            f'(name="{self.name}", rho={selfrho}, G_s={selfGs}, '
+            f"E={selfE}, color={self.color!r})"
+        )
+
+    def __str__(self):
+        """Convert object into string.
+
+        Returns
+        -------
+        The object's parameters translated to strings
+
+        Examples
+        --------
+        >>> import ross as rs
+        >>> print(rs.Material.load_material('Steel'))
+        Steel
+        -----------------------------------
+        Density         (kg/m**3): 7810.0
+        Young`s modulus (N/m**2):  2.11e+11
+        Shear modulus   (N/m**2):  8.12e+10
+        Poisson coefficient     :  0.29926108
+        """
+        return (
+            f"{self.name}"
+            f'\n{35*"-"}'
+            f"\nDensity         (kg/m**3): {self.rho:{2}.{8}}"
+            f"\nYoung`s modulus (N/m**2):  {self.E:{2}.{8}}"
+            f"\nShear modulus   (N/m**2):  {self.G_s:{2}.{8}}"
+            f"\nPoisson coefficient     :  {self.Poisson:{2}.{8}}"
+        )
+
     @staticmethod
     def dump_data(data):
-        with open("available_materials.toml", "w") as f:
+        """Save material properties.
+
+        This is an auxiliary function to save the materials properties in the save
+        method.
+
+        Parameters
+        ----------
+        data : dict
+            Dictionary containing all data needed to instantiate the Object.
+        """
+        with open(AVAILABLE_MATERIALS_PATH, "w") as f:
             toml.dump(data, f)
 
     @staticmethod
-    def load_data():
+    def get_data():
+        """Load material properties.
+
+        This is an auxiliary function to load all saved materials properties in the
+        load_material method.
+
+        Returns
+        -------
+        data : dict
+            Containing all data needed to instantiate a Material Object.
+        """
         try:
-            with open("available_materials.toml", "r") as f:
+            with open(AVAILABLE_MATERIALS_PATH, "r") as f:
                 data = toml.load(f)
         except FileNotFoundError:
             data = {"Materials": {}}
@@ -82,9 +194,28 @@ class Material:
         return data
 
     @staticmethod
-    def use_material(name):
-        data = Material.load_data()
+    def load_material(name):
+        """Load a material that is available in the data file.
+
+        Returns
+        -------
+        ross.Material
+            An object with the material properties.
+
+        Raises
+        ------
+        KeyError
+            Error raised if argument name does not match any material name in the file.
+
+        Examples
+        --------
+        >>> import ross as rs
+        >>> steel = rs.Material.load_material('Steel')
+        """
+        data = Material.get_data()
         try:
+            # Remove Poisson from dict and create material from E and G_s
+            data["Materials"][name].pop("Poisson")
             material = data["Materials"][name]
             return Material(**material)
         except KeyError:
@@ -92,7 +223,23 @@ class Material:
 
     @staticmethod
     def remove_material(name):
-        data = Material.load_data()
+        """Delete a saved ross.Material.
+
+        Parameters
+        ----------
+        name : string
+            Name of Material Object to be deleted.
+
+        Examples
+        --------
+        >>> import ross as rs
+        >>> steel = rs.Material.load_material('Steel')
+        >>> steel.name = 'test_material'
+        >>> steel.save_material()
+        >>> steel.remove_material('test_material')
+        """
+        data = Material.get_data()
+
         try:
             del data["Materials"][name]
         except KeyError:
@@ -101,29 +248,32 @@ class Material:
 
     @staticmethod
     def available_materials():
+        """Return a list of all saved material's name.
+
+        Returns
+        -------
+        available_materials : list
+            A list containing all saved material's names.
+
+        Examples
+        --------
+        >>> import ross as rs
+        >>> steel = rs.Material.load_material('Steel')
+        >>> steel.name = 'test_material'
+        >>> steel.save_material()
+        >>> steel.remove_material('test_material')
+        """
         try:
-            data = Material.load_data()
+            data = Material.get_data()
             return list(data["Materials"].keys())
         except FileNotFoundError:
             return "There is no saved materials."
 
     def save_material(self):
-        data = Material.load_data()
+        """Save the material in the available_materials list."""
+        data = Material.get_data()
         data["Materials"][self.name] = self.__dict__
         Material.dump_data(data)
-
-    def __repr__(self):
-        return f"{self.name}"
-
-    def __str__(self):
-        return (
-            f"{self.name}"
-            f'\n{35*"-"}'
-            f"\nDensity         (N/m**3): {float(self.rho):{2}.{8}}"
-            f"\nYoung`s modulus (N/m**2): {float(self.E):{2}.{8}}"
-            f"\nShear modulus   (N/m**2): {float(self.G_s):{2}.{8}}"
-            f"\nPoisson coefficient     : {float(self.Poisson):{2}.{8}}"
-        )
 
 
 steel = Material(name="Steel", rho=7810, E=211e9, G_s=81.2e9)

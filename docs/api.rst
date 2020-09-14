@@ -1,30 +1,30 @@
-The ROSS project API
-====================
+.. _API:
 
-The Rotor module
-----------------
+.. currentmodule:: ross
 
-.. automodule:: ross.rotor_assembly
-    :members:
+API Reference
+=============
 
-The "Element" class
--------------------
+Material
+--------
+.. autosummary::
+    :toctree: generated/material
 
-.. automodule:: ross.element
-    :members:
+    Material
 
-.. automodule:: ross.bearing_seal_element
-    :members:
+Elements
+--------
+.. autosummary::
+    :toctree: generated/elements
 
-.. automodule:: ross.disk_element
-    :members:
+    ShaftElement
+    DiskElement
+    BearingElement
+    SealElement
 
-.. automodule:: ross.shaft_element
-    :members:
+Rotor
+-------
+.. autosummary::
+    :toctree: generated/results
 
-The "Material" class
---------------------
-
-.. automodule:: ross.materials
-    :members:
-
+    Rotor
