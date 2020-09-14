@@ -73,7 +73,14 @@ def internal_radius_function(gama, attitude_angle, radius_rotor, eccentricity):
 
 
 def external_radius_function(
-    gama, radius_stator, radius_rotor=None, shape="cylindrical", m=0.05
+    gama,
+    radius_stator,
+    radius_rotor=None,
+    shape="cylindrical",
+    preload=None,
+    theta_s=None,
+    theta_f=None,
+    max_depth=None,
 ):
     """This function returns the x and y of the radius of the stator, as well as its distance from the
     origin, given the distance in the theta-axis and the radius of the bearing.
@@ -88,11 +95,18 @@ def external_radius_function(
     shape : str
         Determines the type of bearing geometry.
         'cylindrical': cylindrical bearing;
-        'eliptical': eliptical bearing
+        'eliptical': eliptical bearing;
+        'wear': journal bearing wear.
         The default is 'cylindrical'.
-    m : float
+    preload : float
         The ellipticity ratio of the bearing if the shape is eliptical. Varies between 0 and 1.
         The default is 0.05.
+    theta_s: float
+        Angle where wear starts.
+    theta_f: float
+        Angle where wear ends.
+    max_depth: float
+        The maximum wear depth.
     Returns
     -------
     radius_external: float
@@ -112,7 +126,7 @@ def external_radius_function(
     """
     if shape == "eliptical":
         cr = radius_stator - radius_rotor
-        elip = m * cr
+        elip = preload * cr
         if 0 <= gama <= np.pi / 2:
             alpha = np.pi / 2 + gama
         elif np.pi / 2 < gama <= np.pi:
@@ -125,6 +139,41 @@ def external_radius_function(
         radius_external = elip * np.cos(alpha) + np.sqrt(
             ((radius_stator) ** 2) - (elip * np.sin(alpha)) ** 2
         )
+        xre = radius_external * np.cos(gama)
+        yre = radius_external * np.sin(gama)
+
+    elif shape == "wear":
+        theta_0 = theta_s + (theta_f - theta_s) / 2
+        A = np.array(
+            [
+                [theta_s ** 2, theta_s, 1],
+                [theta_f ** 2, theta_f, 1],
+                [(theta_0) ** 2, (theta_0), 1],
+            ]
+        )
+        f = np.array([0, 0, max_depth])
+        C = np.linalg.solve(A, f)
+
+        def wear(x):
+            """Calculates the parabola that defines the wear depth at each angle.
+            Parameters
+            ----------
+            x: float
+                The distance in the theta-axis
+            Returns
+            -------
+            d_theta: float
+                Depth of wear at each angle.
+            """
+            d_theta = C[0] * x ** 2 + C[1] * x + C[2]
+            return d_theta
+
+        if theta_s <= gama <= theta_f:
+            d_theta = wear(gama)
+        else:
+            d_theta = 0
+
+        radius_external = radius_stator + d_theta
         xre = radius_external * np.cos(gama)
         yre = radius_external * np.sin(gama)
 
