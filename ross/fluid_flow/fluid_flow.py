@@ -78,12 +78,23 @@ class FluidFlow:
         if length/diameter > 8 it is long.
     shape_geometry: str
         Determines the type of bearing geometry.
-        'cylindrical': cylindrical bearing; 'eliptical': eliptical bearing
+        'cylindrical': cylindrical bearing; 'eliptical': eliptical bearing;
+        'wear': journal bearing wear.
         The default is 'cylindrical'.
-    preload: float
+    preload: float, optional
         Ellipticity ratio. The value must be between 0 and 1. If preload = 0
         the bearing becomes cylindrical. Not used in cylindrical bearings.
-        The default is 0.05.
+        The default is 0.4.
+    theta_s: float
+        Angle where wear starts. It should range from 0 to 2*np.pi.
+        Only necessary if shape_geometry is wear.
+        The default is (3 * np.pi) / 2.
+    theta_f: float
+        Angle where wear ends. It should range from 0 to 2*np.pi.
+        Only necessary if shape_geometry is wear.
+        The default is (7 * np.pi) / 4.
+    max_depth: float
+        The maximum wear depth. Only necessary if shape_geometry is wear..
 
     Fluid characteristics
     ^^^^^^^^^^^^^^^^^^^^^
@@ -223,7 +234,10 @@ class FluidFlow:
         immediately_calculate_pressure_matrix_numerically=True,
         bearing_type=None,
         shape_geometry="cylindrical",
-        preload=0.05,
+        preload=0.4,
+        theta_s=(3 * np.pi) / 2,
+        theta_f=(7 * np.pi) / 4,
+        max_depth=None,
     ):
 
         self.nz = nz
@@ -254,6 +268,9 @@ class FluidFlow:
                 self.bearing_type = "medium_size"
         self.shape_geometry = shape_geometry
         self.preload = preload
+        self.theta_s = theta_s
+        self.theta_f = theta_f
+        self.max_depth = max_depth
         self.eccentricity = eccentricity
         self.attitude_angle = attitude_angle
         self.eccentricity_ratio = None
@@ -458,7 +475,8 @@ class FluidFlow:
                 self.gama[i, j] = j * self.dtheta + start
                 [radius_external, self.xre[i, j], self.yre[i, j]] = \
                     external_radius_function(self.gama[i, j], self.radius_stator, self.radius_rotor,
-                                             shape=self.shape_geometry, m=self.preload)
+                                             shape=self.shape_geometry, preload=self.preload, theta_s=self.theta_s,
+                                             theta_f=self.theta_f, max_depth=self.max_depth)
                 [radius_internal, self.xri[i, j], self.yri[i, j]] = \
                     internal_radius_function(self.gama[i, j], self.attitude_angle, self.radius_rotor,
                                              self.eccentricity)
